@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -16,6 +17,8 @@ void printBoard(int board[][8]);
 int gameEnded(int board[][8]);
 bool makeMove(int board[][8], char move[]);
 bool validatePawn(Move m, int board[][8]);
+bool validateKnight(Move m);
+
 void clearScreen()
 {
     // \e[1;1H moves cursor to row 1, column 1
@@ -57,6 +60,13 @@ int main(int argc, char const *argv[])
         char move[10];
         printf("%s turn. Enter your move:\n", turnOfWhite ? "White's" : "Black's");
         fgets(move, sizeof(move), stdin);
+        if (strchr(move, '\n') == NULL)
+        {
+            int c;
+            // Read and discard characters until we hit a newline or EOF
+            while ((c = getchar()) != '\n' && c != EOF)
+                ;
+        }
         if (makeMove(board, move))
         {
             clearScreen();
@@ -101,7 +111,7 @@ bool makeMove(int board[][8], char move[])
     if (m.fromCol < 0 || m.fromCol > 7 || m.fromRow < 0 || m.fromRow > 7 ||
         m.toCol < 0 || m.toCol > 7 || m.toRow < 0 || m.toRow > 7)
     {
-        printf("Out of bounds!\n");
+        printf("\nInvalid Move!\n");
         return false;
     }
 
@@ -117,7 +127,12 @@ bool makeMove(int board[][8], char move[])
         case 6:
         case 12:
             isValidMove = validatePawn(m, board);
+            break;
+        case 4:
+        case 10:
+            isValidMove = validateKnight(m);
         }
+
         if (isValidMove)
         {
             *m.to = *m.from;
@@ -125,7 +140,7 @@ bool makeMove(int board[][8], char move[])
             return true;
         }
     }
-    printf("Invalid Move.\n");
+    printf("\nInvalid Move.\n");
     return false;
 }
 
@@ -150,4 +165,11 @@ bool validatePawn(Move m, int board[][8])
     }
 
     return false;
+}
+
+bool validateKnight(Move m)
+
+{
+    if (abs(m.fromRow - m.toRow) * abs(m.fromCol - m.toCol) == 2)
+        return true;
 }
