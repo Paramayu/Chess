@@ -18,6 +18,7 @@ int gameEnded(int board[][8]);
 bool makeMove(int board[][8], char move[]);
 bool validatePawn(Move m, int board[][8]);
 bool validateKnight(Move m);
+bool validateRook(Move m, int board[][8]);
 
 void clearScreen()
 {
@@ -131,6 +132,11 @@ bool makeMove(int board[][8], char move[])
         case 4:
         case 10:
             isValidMove = validateKnight(m);
+            break;
+        case 3:
+        case 9:
+            isValidMove = validateRook(m, board);
+            break;
         }
 
         if (isValidMove)
@@ -172,4 +178,36 @@ bool validateKnight(Move m)
 {
     if (abs(m.fromRow - m.toRow) * abs(m.fromCol - m.toCol) == 2)
         return true;
+    return false;
+}
+
+bool validateRook(Move m, int board[][8])
+{
+    if (m.fromRow == m.toRow)
+    {
+        int unitVector = (m.toCol - m.fromCol) / abs(m.toCol - m.fromCol);
+
+        for (int i = m.fromCol + unitVector; i != m.toCol; i += unitVector)
+        {
+            if (board[m.fromRow][i] != 0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    else if (m.fromCol == m.toCol)
+    {
+        int unitVector = (m.toRow - m.fromRow) / abs(m.toRow - m.fromRow);
+        for (int i = m.fromRow + unitVector; i != m.toRow; i += unitVector)
+        {
+            if (board[i][m.fromCol] != 0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    return false;
 }
