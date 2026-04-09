@@ -243,7 +243,7 @@ bool makeMove(int board[][8], Move m, bool test)
     if (m.fromCol < 0 || m.fromCol > 7 || m.fromRow < 0 || m.fromRow > 7 ||
         m.toCol < 0 || m.toCol > 7 || m.toRow < 0 || m.toRow > 7)
     {
-        return 0;
+        return false;
     }
 
     int *from = &board[m.fromRow][m.fromCol];
@@ -287,10 +287,17 @@ bool makeMove(int board[][8], Move m, bool test)
     }
     if (isValidMove)
     {
-        int tmpto = *to;
-        int tmpfrom = *from;
+        int tmp = *to;
         *to = *from;
         *from = 0;
+
+        if (isChecked(board, turnOfWhite))
+        {
+            // Rewind change if checked.
+            *from = *to;
+            *to = tmp;
+            return false;
+        }
         if (!test && (*to == 6 || *to == 12) && (m.toRow == 0 || m.toRow == 7))
         {
             printf("You may promote your pawn.\n Enter Q,R,N or B for Queen, Rook, Knight or Bishop respectivly.\n Enter your choice: ");
@@ -299,14 +306,9 @@ bool makeMove(int board[][8], Move m, bool test)
             choice = toupper(choice);
             *to = (choice == 'Q' ? 2 : (choice == 'R' ? 3 : (choice == 'N' ? 4 : 5))) + (turnOfWhite ? 0 : 6);
         }
-
-        if (!isChecked(board, turnOfWhite))
-            return 1;
-        // Rewind change if checked.
-        *from = tmpfrom;
-        *to = tmpto;
-        }
-    return 0;
+        return true;
+    }
+    return false;
 }
 
 bool validatePawn(Move m, int board[][8])
