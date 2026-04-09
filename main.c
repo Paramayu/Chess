@@ -9,24 +9,35 @@ typedef struct
     int fromCol;
     int toRow;
     int toCol;
-    int *from;
-    int *to;
 } Move;
 
+typedef struct Pos
+{
+    int row, col;
+} Pos;
+
+void displayStartMenu();
 void printBoard(int board[][8]);
-int gameEnded(int board[][8]);
-bool makeMove(int board[][8], char move[]);
+int gameState(int board[][8]);
+bool makeMove(int board[][8], Move m);
 bool validatePawn(Move m, int board[][8]);
 bool validateKnight(Move m);
+bool validateKing(Move m);
 bool validateRook(Move m, int board[][8]);
 bool validateBishop(Move m, int board[][8]);
+bool isChecked(int board[][8], bool whiteKingToCheck);
+Pos findPiece(int board[][8], int pieceIndex);
 
 void clearScreen()
-{
-    // \e[1;1H moves cursor to row 1, column 1
-    // \e[2J clears the entire screen
-    printf("\033[H\033[J");
+{ // Help from gemini used here. :)
+#ifdef _WIN32
+  // Traditional Windows method
     system("cls");
+#else
+  // ANSI escape codes for Linux/Mac/Modern Terminal
+    // \033 is the octal for the Escape character
+    printf("\033[H\033[2J");
+#endif
 }
 
 const char pieces[] = {' ',
@@ -47,7 +58,9 @@ int moveCount = 0;
 
 int main(int argc, char const *argv[])
 {
+    displayStartMenu();
     clearScreen();
+    // Manually Mapped the board at first.
     int board[8][8] = {{9, 10, 11, 8, 7, 11, 10, 9},
                        {12, 12, 12, 12, 12, 12, 12, 12},
                        {0},
@@ -57,7 +70,7 @@ int main(int argc, char const *argv[])
                        {6, 6, 6, 6, 6, 6, 6, 6},
                        {3, 4, 5, 2, 1, 5, 4, 3}};
     printBoard(board);
-    while (gameEnded(board) == 0)
+    while (true)
     {
         char move[10];
         printf("%s turn. Enter your move:\n", turnOfWhite ? "White's" : "Black's");
@@ -69,96 +82,228 @@ int main(int argc, char const *argv[])
             while ((c = getchar()) != '\n' && c != EOF)
                 ;
         }
-        if (makeMove(board, move))
+        Move m;
+        m.fromCol = move[0] - 'a';
+        m.fromRow = 8 - (move[1] - '0');
+        m.toCol = move[2] - 'a';
+        m.toRow = 8 - (move[3] - '0');
+        int makeMoveRes = makeMove(board, m);
+        if (makeMoveRes == 1)
         {
             clearScreen();
             printBoard(board);
-            turnOfWhite = turnOfWhite ? false : true;
+            turnOfWhite = !turnOfWhite;
+            int gamestate = gameState(board);
+            if (gamestate > 1)
+            {
+                printf("%s\nGame Over. %s", (gamestate == 2 ? "Checkmate" : "Stalemate"), ((gameState == 3) ? "It is a Draw!!" : (turnOfWhite ? "Black Wins!!" : "White Wins!!")));
+                return 1;
+            }
+            if (gamestate == 1)
+            {
+                printf("Check\n");
+            }
             moveCount++;
         }
+        else
+            printf("%s", makeMoveRes == 0 ? "Invalid Move" : "Illegal Move. You cannot let your king be in check.");
     }
 
     return 0;
 }
 
-void printBoard(int board[][8])
+void printBoard(int board[8][8])
 {
+    // Used gemini to make this more preety. :)
     printf("\n       a     b     c     d     e     f     g     h\n");
-    printf("    +-----+-----+-----+-----+-----+-----+-----+-----+\n");
 
     for (int i = 0; i < 8; i++)
     {
+        printf("    +-----+-----+-----+-----+-----+-----+-----+-----+\n");
         printf(" %d  ", 8 - i);
 
         for (int j = 0; j < 8; j++)
         {
-            printf("|  %c  ", pieces[board[i][j]]);
+            printf("|");
+
+            // 1. Set Background Color
+            bool isLightSquare = ((i + j) % 2 == 0);
+            if (isLightSquare)
+                printf("\033[47m"); // Light Gray/White
+            else
+                printf("\033[100m"); // Dark Gray
+
+            // 2. Set Text Color for Maximum Contrast
+            // Light Square -> Black Text (30)
+            // Dark Square -> White Text (37)
+            if (isLightSquare)
+                printf("\033[1;30m");
+            else
+                printf("\033[1;37m");
+
+            int val = board[i][j];
+            if (val == 0)
+            {
+                printf("     ");
+            }
+            else
+            {
+                printf("  %c  ", pieces[val]);
+            }
+
+            printf("\033[0m");
         }
-        printf("|\n    +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+        printf("| %d\n", 8 - i);
     }
+    printf("    +-----+-----+-----+-----+-----+-----+-----+-----+\n");
+    printf("       a     b     c     d     e     f     g     h\n\n");
 }
 
-int gameEnded(int board[][8])
+void displayStartMenu()
 {
+    clearScreen();
+    printf("====================================================\n");
+    printf("            WELCOME TO THE GAME OF CHESS            \n");
+    printf("====================================================\n\n");
+
+    printf("  PIECE LEGEND:\n");
+    printf("  --------------------------------------------------\n");
+    printf("  WHITE (Capital)          BLACK (Small)\n");
+    printf("  K : King                 k : King\n");
+    printf("  Q : Queen                q : Queen\n");
+    printf("  R : Rook                 r : Rook\n");
+    printf("  B : Bishop               b : Bishop\n");
+    printf("  N : Knight               n : Knight\n");
+    printf("  P : Pawn                 p : Pawn\n\n");
+
+    printf("  HOW TO MOVE:\n");
+    printf("  --------------------------------------------------\n");
+    printf("  Enter moves using coordinates (e.g., e2e4).\n");
+    printf("  - 'e2' is the starting square.\n");
+    printf("  - 'e4' is the destination square.\n\n");
+
+    printf("  SPECIAL RULES:\n");
+    printf("  --------------------------------------------------\n");
+    printf("  - The game detects Check, Checkmate, and Stalemate.\n");
+    printf("  - You cannot move into check.\n\n");
+
+    printf("====================================================\n");
+    printf("          PRESS [ENTER] TO START THE GAME          \n");
+    printf("====================================================\n");
+
+    // Wait for the user to press Enter
+    getchar();
+}
+
+int gameState(int board[][8])
+{
+    bool hasLegalMove = false;
+    for (int fR = 0; fR < 8; fR++)
+    {
+        for (int fC = 0; fC < 8; fC++)
+        {
+            if (board[fR][fC] < 6.5 == turnOfWhite)
+            {
+                for (int tR = 0; tR < 8; tR++)
+                {
+                    for (int tC = 0; tC < 8; tC++)
+                    {
+                        Move m = {fR, fC, tR, tC};
+                        int tmp = board[tR][tC];
+                        // Check if this move can be done
+                        if (makeMove(board, m))
+                        {
+                            hasLegalMove = true;
+                            // Rewind the change from makeMove.
+                            board[fR][fC] = board[tR][tC];
+                            board[tR][tC] = tmp;
+                            goto end_loops;
+                        }
+                    }
+                }
+            }
+        }
+    }
+end_loops:
+    if (isChecked(board, turnOfWhite))
+    {
+        if (hasLegalMove)
+            return 1; // For just check
+        else
+            return 2; // For checkmate
+    }
+    else if (!hasLegalMove)
+        return 3; // For stalemate
+
     return 0;
 }
 
-bool makeMove(int board[][8], char move[])
+bool makeMove(int board[][8], Move m)
 {
-    Move m;
-    m.fromCol = move[0] - 'a';
-    m.fromRow = 8 - (move[1] - '0');
-    m.toCol = move[2] - 'a';
-    m.toRow = 8 - (move[3] - '0');
+    // Check out of bounds
     if (m.fromCol < 0 || m.fromCol > 7 || m.fromRow < 0 || m.fromRow > 7 ||
         m.toCol < 0 || m.toCol > 7 || m.toRow < 0 || m.toRow > 7)
     {
-        printf("\nInvalid Move!\n");
-        return false;
+        return 0;
     }
 
-    m.from = &board[m.fromRow][m.fromCol];
-    m.to = &board[m.toRow][m.toCol];
+    int *from = &board[m.fromRow][m.fromCol];
+    int *to = &board[m.toRow][m.toCol];
 
     // Checks that from is not 0 and then checks whose turn it is and their piece is moved. Then it also checks if either the destination is empty or contains enemy's piece and not ones own piece.
-    if ((*m.from != 0 && ((turnOfWhite && *m.from <= 6) || (!turnOfWhite && *m.from > 6)) && (*m.to == 0 || (*m.to > 6 && turnOfWhite) || (*m.to <= 6 && !turnOfWhite))))
+    bool isValidMove = false;
+    if ((*from != 0 && ((turnOfWhite && *from <= 6) || (!turnOfWhite && *from > 6)) && (*to == 0 || (*to > 6 && turnOfWhite) || (*to <= 6 && !turnOfWhite))))
     {
-        bool isValidMove = false;
-        switch (*m.from)
+        switch (*from)
         {
-        case 6:
-        case 12:
-            isValidMove = validatePawn(m, board);
+        case 1:
+        case 7:
+            isValidMove = validateKing(m);
             break;
-        case 4:
-        case 10:
-            isValidMove = validateKnight(m);
+        case 2:
+        case 8:
+            isValidMove = validateBishop(m, board) || validateRook(m, board);
             break;
+
         case 3:
         case 9:
             isValidMove = validateRook(m, board);
             break;
+
+        case 4:
+        case 10:
+            isValidMove = validateKnight(m);
+            break;
+
         case 5:
         case 11:
             isValidMove = validateBishop(m, board);
             break;
-        }
 
-        if (isValidMove)
-        {
-            *m.to = *m.from;
-            *m.from = 0;
-            return true;
+        case 6:
+        case 12:
+            isValidMove = validatePawn(m, board);
+            break;
         }
     }
-    printf("\nInvalid Move.\n");
-    return false;
+    if (isValidMove)
+    {
+        int tmp = *to;
+        *to = *from;
+        *from = 0;
+        if (!isChecked(board, turnOfWhite))
+            return 1;
+        // Rewind change if checked.
+        *from = *to;
+        *to = tmp;
+    }
+    return 0;
 }
 
 bool validatePawn(Move m, int board[][8])
 {
     // Checks if columns are same and destination is free
-    if (m.fromCol == m.toCol && *m.to == 0)
+    if (m.fromCol == m.toCol && board[m.toRow][m.toCol] == 0)
     {
         // Checks if the pawn is moved for first time and if is tried to be moved two steps and no movement in column
         if (((turnOfWhite && m.fromRow == 6 && (m.fromRow - m.toRow) == 2) || (!turnOfWhite && m.fromRow == 1 && (m.fromRow - m.toRow) == -2)))
@@ -170,7 +315,7 @@ bool validatePawn(Move m, int board[][8])
         else if (turnOfWhite && (m.fromRow - m.toRow) == 1 || !turnOfWhite && (m.fromRow - m.toRow) == -1)
             return true;
     }
-    else if (abs(m.fromCol - m.toCol) == 1 && *m.to != 0 && (turnOfWhite && (m.fromRow - m.toRow) == 1 || !turnOfWhite && (m.fromRow - m.toRow) == -1))
+    else if (abs(m.fromCol - m.toCol) == 1 && board[m.toRow][m.toCol] != 0 && (turnOfWhite && (m.fromRow - m.toRow) == 1 || !turnOfWhite && (m.fromRow - m.toRow) == -1))
     {
         return true;
     }
@@ -233,4 +378,97 @@ bool validateBishop(Move m, int board[][8])
         }
         return true;
     }
+    return false;
+}
+
+bool validateKing(Move m)
+{
+    if (abs(m.fromRow - m.toRow) <= 1 && abs(m.fromCol - m.toCol) <= 1)
+    {
+        return true;
+    }
+    return false;
+}
+
+bool isChecked(int board[][8], bool whiteKingToCheck)
+{
+
+    const Pos kingPos = findPiece(board, whiteKingToCheck ? 1 : 7);
+    const int pieces[2][6] = {
+        {1, 2, 3, 4, 5, 6},
+        {7, 8, 9, 10, 11, 12}};
+    const int *refIndex = whiteKingToCheck ? pieces[1] : pieces[0];
+
+    int pawnDir = whiteKingToCheck ? -1 : 1;
+
+    for (int i = -2; i <= 2; i++)
+    {
+        for (int j = -2; j <= 2; j++)
+        {
+            // If check piece is same or both i and j are 2,-2.
+            if ((i == 0 && j == 0) || (abs(i * j) > 2))
+                continue;
+            // Bounds verification
+            if (kingPos.row + i < 8 && kingPos.col + j < 8 && kingPos.row + i >= 0 && kingPos.col + j >= 0)
+            {
+                // Checking for knight threat.
+                if ((abs(i * j) == 2))
+                {
+                    if (board[kingPos.row + i][kingPos.col + j] == refIndex[3])
+                        return true;
+                    continue;
+                }
+                // Checking for adjecent king
+                if (board[kingPos.row + i][kingPos.col + j] == refIndex[0])
+                    return true;
+                // Checking for rook queen and bishop threats
+                if (abs(i) <= 1 && abs(j) <= 1)
+                {
+                    Pos checkPos = kingPos;
+                    checkPos.row += i;
+                    checkPos.col += j;
+                    while (checkPos.row < 8 && checkPos.col < 8 && checkPos.row >= 0 && checkPos.col >= 0)
+                    {
+                        int checkSq = board[checkPos.row][checkPos.col];
+                        if (checkSq)
+                        {
+                            // Breaks if checkSq is own piece.
+                            if (checkSq < 6.5 == whiteKingToCheck)
+                                break;
+                            // Check for pawn threat.
+                            if ((i == pawnDir) && (abs(j) == 1) && (checkPos.row == kingPos.row + i) && (checkSq == refIndex[5]))
+                                return true;
+
+                            // Checks for rook and queen threat.
+                            if ((i == 0 || j == 0) && (checkSq == refIndex[2] || checkSq == refIndex[1]))
+                                return true;
+                            // Checks for bishop and queen threat.
+                            if (i != 0 && j != 0 && (checkSq == refIndex[4] || checkSq == refIndex[1]))
+                                return true;
+                            break;
+                        }
+                        checkPos.row += i;
+                        checkPos.col += j;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+Pos findPiece(int board[][8], int pieceIndex)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if (board[i][j] == pieceIndex)
+            {
+                return (Pos){i, j};
+            }
+        }
+    }
+    return (Pos){-1, 0};
 }
