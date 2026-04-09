@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <stdbool.h>
 
 typedef struct
@@ -19,7 +20,7 @@ typedef struct Pos
 void displayStartMenu();
 void printBoard(int board[][8]);
 int gameState(int board[][8]);
-bool makeMove(int board[][8], Move m);
+bool makeMove(int board[][8], Move m, bool test);
 bool validatePawn(Move m, int board[][8]);
 bool validateKnight(Move m);
 bool validateKing(Move m);
@@ -87,7 +88,7 @@ int main(int argc, char const *argv[])
         m.fromRow = 8 - (move[1] - '0');
         m.toCol = move[2] - 'a';
         m.toRow = 8 - (move[3] - '0');
-        int makeMoveRes = makeMove(board, m);
+        int makeMoveRes = makeMove(board, m, false);
         if (makeMoveRes == 1)
         {
             clearScreen();
@@ -106,7 +107,7 @@ int main(int argc, char const *argv[])
             moveCount++;
         }
         else
-            printf("%s", makeMoveRes == 0 ? "Invalid Move" : "Illegal Move. You cannot let your king be in check.");
+            printf("%s", makeMoveRes == 0 ? "Invalid Move\n" : "Illegal Move. You cannot let your king be in check.\n");
     }
 
     return 0;
@@ -211,7 +212,7 @@ int gameState(int board[][8])
                         Move m = {fR, fC, tR, tC};
                         int tmp = board[tR][tC];
                         // Check if this move can be done
-                        if (makeMove(board, m))
+                        if (makeMove(board, m, true))
                         {
                             hasLegalMove = true;
                             // Rewind the change from makeMove.
@@ -238,7 +239,7 @@ end_loops:
     return 0;
 }
 
-bool makeMove(int board[][8], Move m)
+bool makeMove(int board[][8], Move m, bool test)
 {
     // Check out of bounds
     if (m.fromCol < 0 || m.fromCol > 7 || m.fromRow < 0 || m.fromRow > 7 ||
@@ -291,11 +292,21 @@ bool makeMove(int board[][8], Move m)
         int tmp = *to;
         *to = *from;
         *from = 0;
+        if (!test && (*to == 6 || *to == 12) && (m.toRow == 0 || m.toRow == 7))
+        {
+            printf("You may promote your pawn.\n Enter Q,R,N or B for Queen, Rook, Knight or Bishop respectivly.\n Enter your choice: ");
+            char choice;
+            scanf(" %c ", &choice);
+            choice = toupper(choice);
+            *to = (choice == 'Q' ? 2 : (choice == 'R' ? 3 : (choice == 'N' ? 4 : 5))) + (turnOfWhite ? 0 : 6);
+        }
+
         if (!isChecked(board, turnOfWhite))
             return 1;
         // Rewind change if checked.
         *from = *to;
         *to = tmp;
+        return 2;
     }
     return 0;
 }
