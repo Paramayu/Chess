@@ -210,14 +210,12 @@ int gameState(int board[][8])
                     for (int tC = 0; tC < 8; tC++)
                     {
                         Move m = {fR, fC, tR, tC};
-                        int tmp = board[tR][tC];
                         // Check if this move can be done
-                        if (makeMove(board, m, true))
+                        int testboard[8][8];
+                        memcpy(testboard, board, sizeof(testboard));
+                        if (makeMove(testboard, m, true))
                         {
                             hasLegalMove = true;
-                            // Rewind the change from makeMove.
-                            board[fR][fC] = board[tR][tC];
-                            board[tR][tC] = tmp;
                             goto end_loops;
                         }
                     }
@@ -289,7 +287,8 @@ bool makeMove(int board[][8], Move m, bool test)
     }
     if (isValidMove)
     {
-        int tmp = *to;
+        int tmpto = *to;
+        int tmpfrom = *from;
         *to = *from;
         *from = 0;
         if (!test && (*to == 6 || *to == 12) && (m.toRow == 0 || m.toRow == 7))
@@ -304,10 +303,9 @@ bool makeMove(int board[][8], Move m, bool test)
         if (!isChecked(board, turnOfWhite))
             return 1;
         // Rewind change if checked.
-        *from = *to;
-        *to = tmp;
-        return 2;
-    }
+        *from = tmpfrom;
+        *to = tmpto;
+        }
     return 0;
 }
 
