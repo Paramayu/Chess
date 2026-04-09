@@ -97,7 +97,7 @@ int main(int argc, char const *argv[])
             int gamestate = gameState(board);
             if (gamestate > 1)
             {
-                printf("%s\nGame Over. %s", (gamestate == 2 ? "Checkmate" : "Stalemate"), ((gameState == 3) ? "It is a Draw!!" : (turnOfWhite ? "Black Wins!!" : "White Wins!!")));
+                printf("%s\nGame Over. %s", (gamestate == 2 ? "Checkmate" : "Stalemate"), ((gamestate == 3) ? "It is a Draw!!" : (turnOfWhite ? "Black Wins!!" : "White Wins!!")));
                 return 1;
             }
             if (gamestate == 1)
@@ -296,7 +296,7 @@ bool makeMove(int board[][8], Move m, bool test)
         {
             printf("You may promote your pawn.\n Enter Q,R,N or B for Queen, Rook, Knight or Bishop respectivly.\n Enter your choice: ");
             char choice;
-            scanf(" %c ", &choice);
+            scanf(" %c", &choice);
             choice = toupper(choice);
             *to = (choice == 'Q' ? 2 : (choice == 'R' ? 3 : (choice == 'N' ? 4 : 5))) + (turnOfWhite ? 0 : 6);
         }
