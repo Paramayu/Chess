@@ -241,7 +241,7 @@ end_loops:
     return 0;
 }
 
-bool makeMove(int board[][8], Move m, bool test)
+int makeMove(int board[][8], Move m, bool test)
 {
     // Check out of bounds
     if (m.fromCol < 0 || m.fromCol > 7 || m.fromRow < 0 || m.fromRow > 7 ||
@@ -307,8 +307,8 @@ bool makeMove(int board[][8], Move m, bool test)
             printf("You may promote your pawn.\n Enter Q,R,N or B for Queen, Rook, Knight or Bishop respectivly.\n Enter your choice: ");
             char choice;
             scanf(" %c", &choice);
-            clearInputBuffer()
-                choice = toupper(choice);
+            clearInputBuffer();
+            choice = toupper(choice);
             *to = (choice == 'Q' ? 2 : (choice == 'R' ? 3 : (choice == 'N' ? 4 : 5))) + (turnOfWhite ? 0 : 6);
         }
         return 1;
