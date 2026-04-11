@@ -20,7 +20,7 @@ typedef struct Pos
 void displayStartMenu();
 void printBoard(int board[][8]);
 int gameState(int board[][8]);
-bool makeMove(int board[][8], Move m, bool test);
+int makeMove(int board[][8], Move m, bool test);
 bool validatePawn(Move m, int board[][8]);
 bool validateKnight(Move m);
 bool validateKing(Move m);
@@ -39,6 +39,13 @@ void clearScreen()
     // \033 is the octal for the Escape character
     printf("\033[H\033[2J");
 #endif
+}
+void clearInputBuffer()
+{
+    int c;
+    // Read and discard characters until we hit a newline or EOF
+    while ((c = getchar()) != '\n' && c != EOF)
+        ;
 }
 
 const char pieces[] = {' ',
@@ -76,13 +83,9 @@ int main(int argc, char const *argv[])
         char move[10];
         printf("%s turn. Enter your move:\n", turnOfWhite ? "White's" : "Black's");
         fgets(move, sizeof(move), stdin);
+        // This clears the input buffer. This knowledge was gained from Gemini but now i have understood how it works and why it is needed.
         if (strchr(move, '\n') == NULL)
-        {
-            int c;
-            // Read and discard characters until we hit a newline or EOF
-            while ((c = getchar()) != '\n' && c != EOF)
-                ;
-        }
+            clearInputBuffer();
         Move m;
         m.fromCol = move[0] - 'a';
         m.fromRow = 8 - (move[1] - '0');
@@ -199,17 +202,18 @@ void displayStartMenu()
 int gameState(int board[][8])
 {
     bool hasLegalMove = false;
-    for (int fR = 0; fR < 8; fR++)
+    for (int fromRow = 0; fromRow < 8; fromRow++)
     {
-        for (int fC = 0; fC < 8; fC++)
+        for (int fromCol = 0; fromCol < 8; fromCol++)
         {
-            if (board[fR][fC] < 6.5 == turnOfWhite)
+            // Checks if the piece is of the color whose turn it will be.
+            if (board[fromRow][fromCol] < 6.5 == turnOfWhite)
             {
-                for (int tR = 0; tR < 8; tR++)
+                for (int toRow = 0; toRow < 8; toRow++)
                 {
-                    for (int tC = 0; tC < 8; tC++)
+                    for (int toCol = 0; toCol < 8; toCol++)
                     {
-                        Move m = {fR, fC, tR, tC};
+                        Move m = {fromRow, fromCol, toRow, toCol};
                         // Check if this move can be done
                         int testboard[8][8];
                         memcpy(testboard, board, sizeof(testboard));
@@ -243,7 +247,7 @@ bool makeMove(int board[][8], Move m, bool test)
     if (m.fromCol < 0 || m.fromCol > 7 || m.fromRow < 0 || m.fromRow > 7 ||
         m.toCol < 0 || m.toCol > 7 || m.toRow < 0 || m.toRow > 7)
     {
-        return false;
+        return 0;
     }
 
     int *from = &board[m.fromRow][m.fromCol];
@@ -296,19 +300,20 @@ bool makeMove(int board[][8], Move m, bool test)
             // Rewind change if checked.
             *from = *to;
             *to = tmp;
-            return false;
+            return -1;
         }
         if (!test && (*to == 6 || *to == 12) && (m.toRow == 0 || m.toRow == 7))
         {
             printf("You may promote your pawn.\n Enter Q,R,N or B for Queen, Rook, Knight or Bishop respectivly.\n Enter your choice: ");
             char choice;
             scanf(" %c", &choice);
-            choice = toupper(choice);
+            clearInputBuffer()
+                choice = toupper(choice);
             *to = (choice == 'Q' ? 2 : (choice == 'R' ? 3 : (choice == 'N' ? 4 : 5))) + (turnOfWhite ? 0 : 6);
         }
-        return true;
+        return 1;
     }
-    return false;
+    return 0;
 }
 
 bool validatePawn(Move m, int board[][8])
