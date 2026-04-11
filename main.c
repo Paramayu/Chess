@@ -207,7 +207,7 @@ int gameState(int board[][8])
         for (int fromCol = 0; fromCol < 8; fromCol++)
         {
             // Checks if the piece is of the color whose turn it will be.
-            if (board[fromRow][fromCol] < 6.5 == turnOfWhite)
+            if ((board[fromRow][fromCol] < 6.5 == turnOfWhite) && board[fromRow][fromCol])
             {
                 for (int toRow = 0; toRow < 8; toRow++)
                 {
